@@ -31,45 +31,45 @@ body:has(.touch-device.playing){overflow:hidden;overscroll-behavior:none}
 .touch-actions{display:grid;justify-items:end;gap:8px}.touch-actions button{min-height:44px;padding:8px 12px;border:1px solid #b2c8a26b;border-radius:7px;background:#151e17ed;color:#edf2e4}
 #touch-bite{min-width:76px;background:var(--lime);color:#1c2511;border-color:var(--lime)}
 
+.touch-layout{
+  --menu-header:46px;
+  --menu-top:env(safe-area-inset-top,0px);
+  --menu-bottom:env(safe-area-inset-bottom,0px);
+  --menu-left:max(14px,env(safe-area-inset-left,0px));
+  --menu-right:max(14px,env(safe-area-inset-right,0px));
+}
+.touch-layout header{
+  width:100%;height:calc(var(--menu-header) + var(--menu-top));
+  padding:var(--menu-top) var(--menu-right) 0 var(--menu-left);
+}
+.touch-layout main{width:100%}
+.touch-layout footer{display:none}
+.touch-device:not(.playing){
+  display:flex;align-items:center;height:auto;
+  min-height:calc(100vh - var(--menu-header) - var(--menu-top) - var(--menu-bottom));
+  min-height:calc(100dvh - var(--menu-header) - var(--menu-top) - var(--menu-bottom));
+  padding:10px var(--menu-right) 10px var(--menu-left);
+  border:0;border-radius:0;touch-action:pan-y;
+}
+.touch-device:not(.playing) .brief{
+  position:relative;inset:auto;width:100%;max-width:560px;transform:none;
+}
+.touch-device:not(.playing) .vignette{
+  background:linear-gradient(90deg,#121913f2,#121913c4 56%,#12191344 86%,transparent);
+}
+.touch-device .brief h1{font-size:clamp(24px,10dvh,44px);margin:7px 0;line-height:1}
+.touch-device .brief h1 br{display:none}
+.touch-device .brief h1 em{display:inline-block;margin-inline-start:.18em}
+.touch-device .brief p{max-width:420px;margin-bottom:8px;font-size:13px;line-height:1.3}
+.touch-device .menu-actions{display:flex;align-items:flex-start;gap:7px;flex-wrap:wrap}
+.touch-device #start{width:auto;max-width:100%;min-height:44px;padding:9px 12px}
+.touch-device #start span{margin-left:10px}
+.touch-device .brief small{margin-top:6px}
+.touch-device #save-controls{margin-top:0}
+.touch-device #save-controls button{min-height:44px}
+.touch-device #save-status:not(:empty){flex-basis:100%}
+.touch-device:not(.playing) :is(.hud,.map,.location){display:none}
 @media (orientation:landscape) and (max-height:540px){
-  body:has(.touch-device){
-    --menu-header:46px;
-    --menu-top:env(safe-area-inset-top,0px);
-    --menu-bottom:env(safe-area-inset-bottom,0px);
-    --menu-left:max(12px,env(safe-area-inset-left,0px));
-    --menu-right:max(12px,env(safe-area-inset-right,0px));
-  }
-  body:has(.touch-device) header{
-    width:100%;height:calc(var(--menu-header) + var(--menu-top));
-    padding:var(--menu-top) var(--menu-right) 0 var(--menu-left);
-  }
-  body:has(.touch-device) main{width:100%}
-  body:has(.touch-device) footer{display:none}
-  .touch-device:not(.playing){
-    height:calc(100vh - var(--menu-header) - var(--menu-top) - var(--menu-bottom));
-    height:calc(100dvh - var(--menu-header) - var(--menu-top) - var(--menu-bottom));
-    min-height:0;border:0;border-radius:0;touch-action:pan-y;
-  }
-  .touch-device:not(.playing) .brief{
-    inset:0 calc(var(--menu-right) + 130px) 0 var(--menu-left);
-    max-width:none;transform:none;overflow-y:auto;overscroll-behavior:contain;
-    touch-action:pan-y;padding:12px 10px 12px 0;
-  }
-  .touch-device:not(.playing) .vignette{
-    background:linear-gradient(90deg,#121913ed,#121913bd 52%,#12191344 77%,transparent);
-  }
-  .touch-device .brief h1{font-size:clamp(24px,9dvh,44px);margin:9px 0;line-height:1}
-  .touch-device .brief h1 br{display:none}
-  .touch-device .brief h1 em{display:inline-block;margin-inline-start:.18em}
-  .touch-device .brief p{margin-bottom:10px;line-height:1.3}
-  .touch-device #start{width:min(100%,219px);min-height:44px;padding:9px 12px}
-  .touch-device .brief small{margin-top:7px}
-  .touch-device #save-controls button{min-height:44px}
-  .touch-device #save-status:not(:empty){flex-basis:100%}
-  .touch-device:not(.playing) .hud{top:8px;right:var(--menu-right);width:120px;padding:8px}
-  .touch-device:not(.playing) .objective{font-size:12px}
-  .touch-device:not(.playing) .counter strong{font-size:20px}
-  .touch-device:not(.playing) .map,.touch-device:not(.playing) .location{display:none}
   .touch-device.playing .hud{width:135px;padding:8px}
   .touch-device.playing .objective{margin:4px 0;font-size:12px}
   .touch-device.playing .counter strong{font-size:20px}

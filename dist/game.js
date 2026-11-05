@@ -256,6 +256,7 @@ function run() {
   const joystick = get('joystick');
   const stick = {pointer:null,x:0,y:0};
   stage.classList.toggle('touch-device',touchDevice);
+  document.body.classList.toggle('touch-layout',touchDevice);
   if (touchDevice) get('flight-controls').textContent = 'Joystick para voar · Arraste a tela para mirar';
   const position = [1,1.52,1];
   const velocity = [0,0,0];
@@ -541,7 +542,7 @@ function run() {
       description.textContent = 'Sua energia acabou. Visite as flores para se recuperar e desvie das mãos dos moradores.';
       start.textContent = '↻  TENTAR DE NOVO';
     }
-    start.focus();
+    start.focus({preventScroll:true});
   }
 
   function play() {

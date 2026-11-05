@@ -282,14 +282,32 @@ function run() {
       {id:'zika',name:'Zika',detail:'Partículas violetas · efeito visual',cost:140,tint:'c68bff'}
     ]
   };
+  const mutations = [
+    {id:'ghost',name:'Asa Fantasma',detail:'Voe mais rápido sem mudar os controles.'},
+    {id:'needle',name:'Agulha de Veludo',detail:'Pique de mais longe, antes de entrar no alcance da mão.'},
+    {id:'nocturnal',name:'Sede Lunar',detail:'Gaste menos energia entre 18h e 6h.'},
+    {id:'reflex',name:'Reflexo Relâmpago',detail:'Ganhe tempo extra para fugir após cada picada.'},
+    {id:'shell',name:'Escudo de Quitina',detail:'Perca menos energia quando levar um tapa.'},
+    {id:'nectar',name:'Bomba de Néctar',detail:'Recupere energia mais depressa ao pousar perto das flores.'}
+  ];
   const storageKey = 'mosquito-simulator-customization-v1';
-  const profile = {gold:0,owned:['culex','clean'],species:'culex',condition:'clean',rewards:{}};
+  const profile = {gold:0,owned:['culex','clean'],species:'culex',condition:'clean',rewards:{},xp:0,training:{},mutations:[]};
   try {
     const saved = JSON.parse(localStorage.getItem(storageKey));
     if (Number.isSafeInteger(saved?.gold) && saved.gold>=0) profile.gold = saved.gold;
     if (saved?.rewards && typeof saved.rewards === 'object') {
       profile.rewards = Object.fromEntries(Object.entries(saved.rewards).filter(([id,value]) =>
         /^[a-z0-9]+-[a-z0-9]+$/.test(id) && Number.isSafeInteger(value) && value>=0
+      ));
+    }
+    if (Number.isSafeInteger(saved?.xp) && saved.xp>=0) profile.xp = saved.xp;
+    if (Array.isArray(saved?.mutations)) {
+      profile.mutations = saved.mutations.filter(id => mutations.some(item => item.id === id)).slice(0,xpLevel()-1);
+    }
+    if (saved?.training && typeof saved.training === 'object') {
+      profile.training = Object.fromEntries(Object.entries(saved.training).filter(([id,mark]) =>
+        /^[a-z0-9]+-[a-z0-9]+$/.test(id) && Array.isArray(mark) &&
+        mark.length === 2 && mark.every(value => Number.isSafeInteger(value) && value>=0) && mark[1]<=12
       ));
     }
     for (const [category, items] of Object.entries(catalog)) {
@@ -307,6 +325,91 @@ function run() {
     get('gold').textContent = profile.gold;
   }
   get('gold').textContent = profile.gold;
+
+  function xpLevel() {
+    return 1+Math.floor((Math.sqrt(9+profile.xp/5)-3)/2);
+  }
+
+  const powers = {};
+  function syncMutations() {
+    for (const item of mutations) {
+      const rank = profile.mutations.filter(id => id === item.id).length;
+      powers[item.id] = {rank, strength:rank/(rank+2)};
+    }
+  }
+
+  function syncXp() {
+    const level = xpLevel();
+    const earned = profile.xp-20*(level-1)*(level+2);
+    const required = 80+40*(level-1);
+    const pending = level-1-profile.mutations.length;
+    get('xp-level').textContent = 'NÍVEL '+level;
+    get('xp-count').textContent = earned+' / '+required+' XP';
+    const bar = get('xp-bar');
+    bar.max = required;
+    bar.value = earned;
+    get('pending-mutations').hidden = !pending;
+    get('pending-mutations').textContent = '+'+pending;
+  }
+
+  function mutationOffers() {
+    const offset = profile.mutations.length*2;
+    return Array.from({length:3},(_,index) => mutations[(offset+index)%mutations.length]);
+  }
+
+  function chooseMutation(item) {
+    if (profile.mutations.length>=xpLevel()-1 || !mutationOffers().includes(item)) return false;
+    profile.mutations.push(item.id);
+    syncMutations();
+    syncXp();
+    saveProfile();
+    return true;
+  }
+
+  function renderMutations() {
+    const pending = xpLevel()-1-profile.mutations.length;
+    get('mutation-summary').textContent = pending
+      ? 'Nível '+xpLevel()+' · Escolha uma das três mutações. Você tem '+pending+' escolha(s).'
+      : 'Nível '+xpLevel()+' · Ganhe XP com picadas e missões para liberar a próxima escolha.';
+    const list = get('mutation-options');
+    list.replaceChildren();
+    for (const item of pending ? mutationOffers() : mutations.filter(item => powers[item.id].rank)) {
+      const row = document.createElement('div');
+      row.className = 'shop-item';
+      const label = document.createElement('div');
+      const name = document.createElement('strong');
+      const detail = document.createElement('span');
+      const rank = powers[item.id].rank;
+      name.textContent = item.name+(rank ? ' · Grau '+rank : '');
+      detail.textContent = item.detail;
+      label.append(name,detail);
+      row.append(label);
+      if (pending) {
+        const button = document.createElement('button');
+        button.textContent = rank ? 'MELHORAR' : 'ESCOLHER';
+        button.setAttribute('aria-label',button.textContent+' '+item.name);
+        button.addEventListener('click', () => {
+          if (!chooseMutation(item)) return;
+          renderMutations();
+          get('mutation-status').textContent = item.name+' · Grau '+powers[item.id].rank+' ativado.';
+          (list.querySelector('button') ?? get('mutations').querySelector('.shop-close')).focus();
+        });
+        row.append(button);
+      }
+      list.append(row);
+    }
+  }
+
+  function openMutations() {
+    if (state === 'playing') overlay('paused');
+    get('mutation-status').textContent = '';
+    renderMutations();
+    get('mutations').showModal();
+  }
+
+  syncMutations();
+  syncXp();
+  get('open-mutations').addEventListener('click',openMutations);
 
   function equip(category,item) {
     const owned = profile.owned.includes(item.id);
@@ -581,20 +684,35 @@ function run() {
     }
     nearby.hit = true;
     nearby.alert = elapsed;
-    nearby.next = elapsed + mission.reaction;
+    nearby.next = elapsed + mission.reaction + .9*powers.reflex.strength;
     score++;
     energy = Math.min(100,energy+12);
     inform('Picada feita! Afaste-se da mão.');
-    if (score === mission.count) {
-      lastReward = 0;
-      if (missionIndex>(profile.rewards[campaign] ?? -1)) {
-        lastReward = 50+10*mission.count;
-        profile.gold += lastReward;
-        profile.rewards[campaign] = missionIndex;
-        saveProfile();
-      }
-      overlay('cleared');
+    const previousLevel = xpLevel();
+    const cleared = score === mission.count;
+    const highestReward = profile.rewards[campaign] ?? -1;
+    const [trainedMission,trainedScore] = profile.training[campaign] ?? [-1,0];
+    let xp = 0;
+    if (missionIndex>highestReward && (missionIndex>trainedMission || (missionIndex===trainedMission && score>trainedScore))) {
+      xp = 20;
+      profile.training[campaign] = [missionIndex,score];
     }
+    lastReward = 0;
+    if (cleared && missionIndex>highestReward) {
+      xp += 30+mission.count*5;
+      lastReward = 50+10*mission.count;
+      profile.gold += lastReward;
+      profile.rewards[campaign] = missionIndex;
+      delete profile.training[campaign];
+    }
+    if (xp) {
+      profile.xp += xp;
+      syncXp();
+      saveProfile();
+      inform('Picada feita! +'+xp+' XP. Afaste-se da mão.');
+    }
+    if (cleared) overlay('cleared');
+    if (xpLevel()>previousLevel) openMutations();
   }
 
   start.addEventListener('click', play);
@@ -689,7 +807,7 @@ function run() {
     worldTime = (worldTime+dt*24/180)%24;
     const ahead = +keys.has('KeyW') - +keys.has('KeyS') + stick.y;
     const side = +keys.has('KeyD') - +keys.has('KeyA') + stick.x;
-    const speed = 4.5 / Math.max(1,Math.hypot(ahead,side));
+    const speed = 4.5*(1+.45*powers.ghost.strength) / Math.max(1,Math.hypot(ahead,side));
     const level = Math.cos(pitch);
     const sin = Math.sin(yaw), cos = Math.cos(yaw);
     const targetVelocity = [
@@ -717,9 +835,11 @@ function run() {
     }
     const [x,y,z] = position;
     const feeding = flowers.some(([fx,fz]) => Math.hypot(x-fx,z-fz)<1 && y<1.25);
-    energy = Math.max(0,Math.min(100,energy+(feeding ? 28 : -mission.drain - (ahead || side ? .22 : 0))*dt));
+    const night = worldTime>=18 || worldTime<6;
+    const drain = (mission.drain+(ahead || side ? .22 : 0))*(night ? 1-.8*powers.nocturnal.strength : 1);
+    energy = Math.max(0,Math.min(100,energy+(feeding ? 28*(1+powers.nectar.strength) : -drain)*dt));
     nearby = null;
-    let nearest = mission.reach;
+    let nearest = mission.reach+.75*powers.needle.strength;
     for (const person of people) {
       const phase = elapsed*.94+person.index;
       person.px = person.x + .87*Math.sin(phase);
@@ -730,9 +850,9 @@ function run() {
         nearest = distance;
       }
       if (person.hit && elapsed >= person.next && distance < 1.43) {
-        energy = Math.max(0,energy-mission.damage);
+        energy = Math.max(0,energy-mission.damage*(1-.8*powers.shell.strength));
         person.alert = elapsed;
-        person.next = elapsed + mission.reaction + .3;
+        person.next = elapsed + mission.reaction + .3 + .9*powers.reflex.strength;
         inform('Tapa! Fuja para recuperar energia nas flores.');
       }
     }

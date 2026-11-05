@@ -681,13 +681,30 @@ function run() {
     return Math.hypot(horizontalGap,heightGap*2);
   }
 
-  function residentInReach() {
+  function hasBiteOpening(person) {
+    const [x,y,z] = position;
+    const dx = (person.px ?? person.x)-x;
+    const dy = Math.max(.32,Math.min(1.82,y))-y;
+    const dz = (person.pz ?? person.z)-z;
+    const distance = Math.hypot(dx,dy,dz);
+    const aim = (dx*Math.sin(yaw)+dz*Math.cos(yaw))*Math.cos(pitch)+dy*Math.sin(pitch);
+    if (distance>.36 && aim<distance*.5) return false;
+
+    const steps = Math.ceil(distance/.08);
+    for (let step=1;step<steps;step++) {
+      const fraction = step/steps;
+      if (occupied([x+dx*fraction,y+dy*fraction,z+dz*fraction])) return false;
+    }
+    return true;
+  }
+
+  function residentInReach(requireOpening = true) {
     let resident = null;
     let nearest = mission.reach+.75*powers.needle.strength;
     for (const person of people) {
       if (!person.target || person.hit) continue;
       const distance = biteDistance(person);
-      if (distance<=nearest) {
+      if (distance<=nearest && (!requireOpening || hasBiteOpening(person))) {
         resident = person;
         nearest = distance;
       }
@@ -699,6 +716,10 @@ function run() {
     if (state !== 'playing') return;
     const resident = residentInReach();
     if (!resident) {
+      if (residentInReach(false)) {
+        inform('Vire para o morador e deixe o caminho livre para picar.');
+        return;
+      }
       const close = people.find(person => biteDistance(person)<.35);
       inform(close?.hit ? 'Você já picou este morador.' : close ? 'Este morador não é alvo. Procure o marcador verde.' : 'Aproxime-se de um morador marcado em verde.');
       return;

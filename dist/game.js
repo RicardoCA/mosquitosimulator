@@ -266,7 +266,7 @@ function run() {
   let yaw = 0, pitch = 0, elapsed = 0, score = 0, energy = 100, notice = '', noticeUntil = 0;
   let missionIndex = 0, mission = generateMission(0);
   let cameraFraction = 1;
-  let drag = null, nearby = null, last = performance.now();
+  let drag = null, last = performance.now();
   const title = brief.querySelector('h1');
   const description = brief.querySelector('p');
 
@@ -557,7 +557,6 @@ function run() {
     mission = {...missionRules(missionIndex), street:streets[saved.district], targets:new Set(saved.targets)};
     position.splice(0,3,...saved.position);
     score = saved.hits.length;
-    nearby = null;
     noticeUntil = 0;
     cameraFraction = 1;
     const hits = new Map(saved.hits.map(([index,next,alert]) => [index,{next,alert}]));
@@ -657,7 +656,6 @@ function run() {
       cameraFraction = 1;
       yaw = pitch = elapsed = score = 0;
       energy = 100;
-      nearby = null;
       noticeUntil = 0;
       for (const person of people) {
         person.target = mission.targets.has(person.index);
@@ -676,15 +674,38 @@ function run() {
 
   let lastReward = 0;
 
+  function biteDistance(person) {
+    const [x,y,z] = position;
+    const heightGap = Math.max(.22-y,0,y-1.87);
+    const horizontalGap = Math.max(0,Math.hypot(x-(person.px ?? person.x),z-(person.pz ?? person.z))-.24);
+    return Math.hypot(horizontalGap,heightGap*2);
+  }
+
+  function residentInReach() {
+    let resident = null;
+    let nearest = mission.reach+.75*powers.needle.strength;
+    for (const person of people) {
+      if (!person.target || person.hit) continue;
+      const distance = biteDistance(person);
+      if (distance<=nearest) {
+        resident = person;
+        nearest = distance;
+      }
+    }
+    return resident;
+  }
+
   function bite() {
     if (state !== 'playing') return;
-    if (!nearby || nearby.hit) {
-      inform('Aproxime-se de um morador ainda não picado.');
+    const resident = residentInReach();
+    if (!resident) {
+      const close = people.find(person => biteDistance(person)<.35);
+      inform(close?.hit ? 'Você já picou este morador.' : close ? 'Este morador não é alvo. Procure o marcador verde.' : 'Aproxime-se de um morador marcado em verde.');
       return;
     }
-    nearby.hit = true;
-    nearby.alert = elapsed;
-    nearby.next = elapsed + mission.reaction + .9*powers.reflex.strength;
+    resident.hit = true;
+    resident.alert = elapsed;
+    resident.next = elapsed + mission.reaction + .9*powers.reflex.strength;
     score++;
     energy = Math.min(100,energy+12);
     inform('Picada feita! Afaste-se da mão.');
@@ -838,17 +859,11 @@ function run() {
     const night = worldTime>=18 || worldTime<6;
     const drain = (mission.drain+(ahead || side ? .22 : 0))*(night ? 1-.8*powers.nocturnal.strength : 1);
     energy = Math.max(0,Math.min(100,energy+(feeding ? 28*(1+powers.nectar.strength) : -drain)*dt));
-    nearby = null;
-    let nearest = mission.reach+.75*powers.needle.strength;
     for (const person of people) {
       const phase = elapsed*.94+person.index;
       person.px = person.x + .87*Math.sin(phase);
       person.pz = person.z + .88*Math.cos(phase);
       const distance = Math.hypot(x-person.px,(y-1.48)*1.15,z-person.pz);
-      if (person.target && !person.hit && distance < nearest) {
-        nearby = person;
-        nearest = distance;
-      }
       if (person.hit && elapsed >= person.next && distance < 1.43) {
         energy = Math.max(0,energy-mission.damage*(1-.8*powers.shell.strength));
         person.alert = elapsed;
@@ -860,7 +875,7 @@ function run() {
     const home = houses.find(([hx,hz]) => Math.abs(x-hx)<3.44 && Math.abs(z-hz)<2.95 && y<3);
     const street = streets[Math.max(0,Math.min(streets.length-1,Math.round((z-firstStreet)/28)))];
     get('location').textContent = home ? 'CASA ' + String(houses.indexOf(home)+1).padStart(2,'0') : street.name.toUpperCase();
-    const message = nearby ? (touchDevice ? 'Toque em PICAR' : '[ E ]  PICAR MORADOR') : feeding ? 'Néctar · Recuperando energia' : elapsed < noticeUntil ? notice : '';
+    const message = residentInReach() ? (touchDevice ? 'Toque em PICAR' : '[ E ]  PICAR MORADOR') : feeding ? 'Néctar · Recuperando energia' : elapsed < noticeUntil ? notice : '';
     hint.hidden = !message;
     if (hint.textContent !== message) hint.textContent = message;
   }

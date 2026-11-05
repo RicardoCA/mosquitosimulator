@@ -350,6 +350,7 @@ function run() {
     bar.value = earned;
     get('pending-mutations').hidden = !pending;
     get('pending-mutations').textContent = '+'+pending;
+    get('xp-available').hidden = !pending;
   }
 
   function mutationOffers() {
@@ -400,31 +401,12 @@ function run() {
     }
   }
 
-  let mutationMenuQueued = false;
-  let shownMutationLevel = 0;
-
-  function showQueuedMutations() {
-    if (!mutationMenuQueued || document.pointerLockElement === canvas) return;
-    mutationMenuQueued = false;
+  function openMutations() {
     const dialog = get('mutations');
-    if (dialog.open) return;
+    if (state === 'playing' || dialog.open) return;
     get('mutation-status').textContent = '';
     renderMutations();
     dialog.showModal();
-    shownMutationLevel = xpLevel();
-  }
-
-  function openMutations() {
-    mutationMenuQueued = true;
-    if (state === 'playing') overlay('paused');
-    requestAnimationFrame(showQueuedMutations);
-  }
-
-  function offerPendingMutations() {
-    const level = xpLevel();
-    if (level<=shownMutationLevel || profile.mutations.length>=level-1) return false;
-    openMutations();
-    return true;
   }
 
   syncMutations();
@@ -669,7 +651,6 @@ function run() {
 
   function play() {
     if (touchDevice && portrait.matches) return;
-    if (offerPendingMutations()) return;
     enableFlightAudio();
     if (state !== 'paused') {
       if (state === 'cleared') mission = generateMission(++missionIndex,mission.targets);
@@ -768,13 +749,13 @@ function run() {
       delete profile.training[campaign];
     }
     if (xp) {
+      const previousLevel = xpLevel();
       profile.xp += xp;
       syncXp();
       saveProfile();
-      inform('Picada feita! +'+xp+' XP. Afaste-se da mão.');
+      inform(xpLevel()>previousLevel ? 'Subiu de nível! Mutação disponível no menu de pausa.' : 'Picada feita! +'+xp+' XP. Afaste-se da mão.');
     }
     if (cleared) overlay('cleared');
-    if (xp) offerPendingMutations();
   }
 
   start.addEventListener('click', play);
@@ -795,7 +776,6 @@ function run() {
   document.addEventListener('pointerlockchange', () => {
     if (document.pointerLockElement === canvas) return;
     if (state === 'playing') overlay('paused');
-    if (mutationMenuQueued) requestAnimationFrame(showQueuedMutations);
   });
 
   function look(dx,dy) {

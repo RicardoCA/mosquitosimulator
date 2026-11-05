@@ -4,7 +4,7 @@
 <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="description" content="Pilote um mosquito em um bairro totalmente 3D.">
 <title>Mosquito Simulator • Operação Zumbido</title>
-<link rel="stylesheet" href="style.css?v=mutations-1">
+<link rel="stylesheet" href="style.css?v=mutation-manual-1">
 </head>
 <body>
 <header><div class="brand"><span class="logo">✣</span> MOSQUITO<span>SIMULATOR</span></div><button id="open-shop" class="shop-toggle" type="button">PERSONALIZAR <span><b id="gold">0</b> GOLD</span></button></header>
@@ -30,6 +30,7 @@
 <div class="hud"><div id="game-clock" aria-label="Horário no jogo">08:00</div><div class="eyebrow">◆ &nbsp; MISSÃO <b id="mission-number">01</b></div><div id="mission-title" class="objective">A hora do lanche</div><div class="counter"><strong id="score">00</strong> / <b id="goal">04</b> <span>PICADAS</span></div><div class="meter-label"><span>ENERGIA</span><span id="percent">100%</span></div><div class="meter"><div id="energy"></div></div>
 <div class="xp-label"><span id="xp-level">NÍVEL 1</span><span id="xp-count">0 / 80 XP</span></div>
 <progress id="xp-bar" value="0" max="80" aria-label="Experiência para o próximo nível"></progress>
+<div id="xp-available" hidden>Mutação disponível</div>
 </div>
 <div class="location"><i></i> <span id="location">MORRO DO COCO</span></div>
 <div class="crosshair" hidden>+</div>
@@ -69,6 +70,6 @@
   <div id="mutation-options"></div>
   <p id="mutation-status" role="status"></p>
 </dialog>
-<script defer src="game.js?v=mutation-popup-2"></script>
+<script defer src="game.js?v=mutation-manual-1"></script>
 </body>
 </html>

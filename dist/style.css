@@ -100,3 +100,5 @@ body:has(.touch-device.playing){overflow:hidden;overscroll-behavior:none}
 #open-mutations{min-height:44px;margin-bottom:4px}
 #pending-mutations{color:#e0c3ff}
 #mutation-status:empty{display:none}
+
+#xp-available{margin-top:4px;color:#e0c3ff;font-size:10px}

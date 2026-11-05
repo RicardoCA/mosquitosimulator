@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Pilote um mosquito em um bairro totalmente 3D.">
+<title>Mosquito Simulator • Operação Zumbido</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header><div class="brand"><span class="logo">✣</span> MOSQUITO<span>SIMULATOR</span></div><button id="open-shop" class="shop-toggle" type="button">PERSONALIZAR <span><b id="gold">0</b> GOLD</span></button></header>
+<main>
+<section class="stage" aria-label="Jogo Mosquito Simulator">
+<canvas id="world" aria-label="Bairro em 3D"></canvas>
+<div class="vignette"></div>
+<div class="brief" id="brief">
+<div class="eyebrow">◈ &nbsp; SIMULADOR DE SOBREVIVÊNCIA</div>
+<h1>Operação<br><em>Zumbido.</em></h1>
+<p>Dez ruas, sessenta casas e um mosquito faminto. Cada janela aberta é uma oportunidade.</p>
+<button id="start">▶ &nbsp; INICIAR VOO <span>↗</span></button>
+<small id="flight-controls">Olhe na direção desejada e avance</small>
+</div>
+<div class="hud"><div class="eyebrow">◆ &nbsp; MISSÃO <b id="mission-number">01</b></div><div id="mission-title" class="objective">A hora do lanche</div><div class="counter"><strong id="score">00</strong> / <b id="goal">04</b> <span>PICADAS</span></div><div class="meter-label"><span>ENERGIA</span><span id="percent">100%</span></div><div class="meter"><div id="energy"></div></div></div>
+<div class="location"><i></i> <span id="location">MORRO DO COCO</span></div>
+<div class="crosshair" hidden>+</div>
+<div id="hint" class="hint" role="status" hidden></div>
+<div class="map"><canvas id="map" width="132" height="106" aria-label="Minimapa"></canvas><span>N &nbsp; / &nbsp; RADAR</span></div>
+<div class="touch" id="touch-controls" role="group" aria-label="Controles de toque" hidden>
+  <div id="joystick" aria-label="Joystick de voo">
+    <span class="joystick-guide" aria-hidden="true">▲</span>
+    <span class="joystick-thumb" aria-hidden="true"></span>
+  </div>
+  <div class="touch-actions">
+    <button id="pause" type="button" aria-label="Pausar jogo">Ⅱ &nbsp; PAUSA</button>
+    <button id="touch-bite" type="button">PICAR</button>
+  </div>
+</div>
+</section>
+<nav aria-label="Controles"><div><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> Voar</div><div><kbd>Mouse</kbd> Mirar o voo</div><div><kbd>E</kbd> Picar</div><div><kbd>Esc</kbd> Pausar</div></nav>
+</main>
+<dialog id="shop" aria-labelledby="shop-title">
+  <form method="dialog"><button class="shop-close" aria-label="Fechar personalização">✕</button></form>
+  <div class="eyebrow">MORRO DO COCO / OFICINA DO MOSQUITO</div>
+  <h2 id="shop-title">Personalizar mosquito</h2>
+  <p>Ganhe Gold ao cumprir missões. Espécies e contaminações mudam a aparência do mosquito.</p>
+  <div class="shop-balance"><b id="shop-gold">0</b> GOLD DISPONÍVEL</div>
+  <div id="shop-items"></div>
+  <p id="shop-status" role="status"></p>
+</dialog>
+<footer><span>MORRO DO COCO &nbsp; / &nbsp; SETOR RESIDENCIAL</span><span>OPERAÇÃO ZUMBIDO &nbsp; · &nbsp; 01</span></footer>
+<script defer src="game.js"></script>
+</body>
+</html>

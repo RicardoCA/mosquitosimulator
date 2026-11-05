@@ -400,11 +400,31 @@ function run() {
     }
   }
 
-  function openMutations() {
-    if (state === 'playing') overlay('paused');
+  let mutationMenuQueued = false;
+  let shownMutationLevel = 0;
+
+  function showQueuedMutations() {
+    if (!mutationMenuQueued || document.pointerLockElement === canvas) return;
+    mutationMenuQueued = false;
+    const dialog = get('mutations');
+    if (dialog.open) return;
     get('mutation-status').textContent = '';
     renderMutations();
-    get('mutations').showModal();
+    dialog.showModal();
+    shownMutationLevel = xpLevel();
+  }
+
+  function openMutations() {
+    mutationMenuQueued = true;
+    if (state === 'playing') overlay('paused');
+    requestAnimationFrame(showQueuedMutations);
+  }
+
+  function offerPendingMutations() {
+    const level = xpLevel();
+    if (level<=shownMutationLevel || profile.mutations.length>=level-1) return false;
+    openMutations();
+    return true;
   }
 
   syncMutations();
@@ -649,6 +669,7 @@ function run() {
 
   function play() {
     if (touchDevice && portrait.matches) return;
+    if (offerPendingMutations()) return;
     enableFlightAudio();
     if (state !== 'paused') {
       if (state === 'cleared') mission = generateMission(++missionIndex,mission.targets);
@@ -730,7 +751,6 @@ function run() {
     score++;
     energy = Math.min(100,energy+12);
     inform('Picada feita! Afaste-se da mão.');
-    const previousLevel = xpLevel();
     const cleared = score === mission.count;
     const highestReward = profile.rewards[campaign] ?? -1;
     const [trainedMission,trainedScore] = profile.training[campaign] ?? [-1,0];
@@ -754,7 +774,7 @@ function run() {
       inform('Picada feita! +'+xp+' XP. Afaste-se da mão.');
     }
     if (cleared) overlay('cleared');
-    if (xpLevel()>previousLevel) openMutations();
+    if (xp) offerPendingMutations();
   }
 
   start.addEventListener('click', play);
@@ -773,7 +793,9 @@ function run() {
   window.addEventListener('keyup', event => keys.delete(event.code));
   window.addEventListener('blur', () => { if (state === 'playing') overlay('paused'); });
   document.addEventListener('pointerlockchange', () => {
-    if (document.pointerLockElement !== canvas && state === 'playing') overlay('paused');
+    if (document.pointerLockElement === canvas) return;
+    if (state === 'playing') overlay('paused');
+    if (mutationMenuQueued) requestAnimationFrame(showQueuedMutations);
   });
 
   function look(dx,dy) {

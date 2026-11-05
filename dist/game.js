@@ -28,9 +28,10 @@ function run() {
     precision mediump float;
     varying vec3 tint;
     varying float depth;
+    uniform vec3 sky, ambient;
     void main() {
       float mist = smoothstep(16.0,88.0,depth)*0.72;
-      gl_FragColor = vec4(mix(tint,vec3(.73,.76,.62),mist),1.0);
+      gl_FragColor = vec4(mix(tint*ambient,sky,mist),1.0);
     }`;
   const program = gl.createProgram();
   for (const [type, source] of [[gl.VERTEX_SHADER, vertex], [gl.FRAGMENT_SHADER, fragment]]) {
@@ -46,7 +47,7 @@ function run() {
   gl.enable(gl.DEPTH_TEST);
   gl.clearColor(.73, .76, .62, 1);
   const attrs = ['position', 'color'].map(name => gl.getAttribLocation(program, name));
-  const uniforms = Object.fromEntries(['eye', 'right', 'up', 'forward', 'lens'].map(name => [name, gl.getUniformLocation(program, name)]));
+  const uniforms = Object.fromEntries(['eye', 'right', 'up', 'forward', 'lens', 'sky', 'ambient'].map(name => [name, gl.getUniformLocation(program, name)]));
   const scenery = gl.createBuffer();
   const actors = gl.createBuffer();
   let vertices = [];
@@ -250,6 +251,7 @@ function run() {
   const keys = new Set();
   const touchDevice = matchMedia('(pointer: coarse)').matches ||
     (window.navigator?.maxTouchPoints > 0 && matchMedia('(any-pointer: coarse) and (max-width: 1024px)').matches);
+  const portrait = matchMedia('(orientation: portrait)');
   const touchControls = get('touch-controls');
   const joystick = get('joystick');
   const stick = {pointer:null,x:0,y:0};
@@ -258,6 +260,8 @@ function run() {
   const position = [1,1.52,1];
   const velocity = [0,0,0];
   let state = 'intro';
+  let worldTime = 8;
+  let campaign = Date.now().toString(36)+'-'+Math.random().toString(36).slice(2);
   let yaw = 0, pitch = 0, elapsed = 0, score = 0, energy = 100, notice = '', noticeUntil = 0;
   let missionIndex = 0, mission = generateMission(0);
   let cameraFraction = 1;
@@ -278,10 +282,15 @@ function run() {
     ]
   };
   const storageKey = 'mosquito-simulator-customization-v1';
-  const profile = {gold:0,owned:['culex','clean'],species:'culex',condition:'clean'};
+  const profile = {gold:0,owned:['culex','clean'],species:'culex',condition:'clean',rewards:{}};
   try {
     const saved = JSON.parse(localStorage.getItem(storageKey));
     if (Number.isSafeInteger(saved?.gold) && saved.gold>=0) profile.gold = saved.gold;
+    if (saved?.rewards && typeof saved.rewards === 'object') {
+      profile.rewards = Object.fromEntries(Object.entries(saved.rewards).filter(([id,value]) =>
+        /^[a-z0-9]+-[a-z0-9]+$/.test(id) && Number.isSafeInteger(value) && value>=0
+      ));
+    }
     for (const [category, items] of Object.entries(catalog)) {
       for (const item of items) {
         if (item.cost && Array.isArray(saved?.owned) && saved.owned.includes(item.id)) profile.owned.push(item.id);
@@ -352,8 +361,19 @@ function run() {
     get('shop').showModal();
   });
 
+  function missionRules(index) {
+    return {
+      title: missionNames[index%missionNames.length],
+      count: Math.min(12,4+index*2),
+      drain: Math.min(.85,.31+index*.16),
+      reach: Math.max(.58,.96-index*.13),
+      reaction: Math.max(.35,.85-index*.2),
+      damage: Math.min(48,28+index*7)
+    };
+  }
+
   function generateMission(index, previous = new Set()) {
-    const count = Math.min(12,4+index*2);
+    const rules = missionRules(index);
     const district = index === 0 ? 4 : 1+Math.floor(Math.random()*(streets.length-2));
     const street = streets[district];
     const candidates = people.filter(person =>
@@ -366,17 +386,95 @@ function run() {
       }
       candidates.sort((a,b) => Number(previous.has(a))-Number(previous.has(b)));
     }
-    return {
-      title: missionNames[index%missionNames.length],
-      count,
-      street,
-      targets: new Set(candidates.slice(0,count)),
-      drain: Math.min(.85,.31+index*.16),
-      reach: Math.max(.58,.96-index*.13),
-      reaction: Math.max(.35,.85-index*.2),
-      damage: Math.min(48,28+index*7)
-    };
+    return {...rules, street, targets:new Set(candidates.slice(0,rules.count))};
   }
+
+  function updateMissionHud() {
+    get('mission-number').textContent = String(missionIndex+1).padStart(2,'0');
+    get('mission-title').textContent = mission.title;
+    get('goal').textContent = String(mission.count).padStart(2,'0');
+  }
+
+  const checkpointKey = 'mosquito-simulator-checkpoint-v1';
+  const saveControls = get('save-controls');
+  const saveButton = get('save-game');
+  const loadButton = get('load-game');
+  const saveStatus = get('save-status');
+
+  function readCheckpoint() {
+    try {
+      return JSON.parse(localStorage.getItem(checkpointKey));
+    } catch {
+      return null;
+    }
+  }
+
+  function showSaveControls() {
+    const checkpoint = readCheckpoint();
+    saveControls.hidden = state !== 'paused' && !(state === 'intro' && checkpoint);
+    saveButton.hidden = state !== 'paused';
+    loadButton.disabled = !checkpoint;
+    saveStatus.textContent = '';
+  }
+
+  function saveGame() {
+    if (state !== 'paused') return;
+    const checkpoint = {
+      campaign, missionIndex, district:streets.indexOf(mission.street),
+      targets:[...mission.targets], position, yaw, pitch, elapsed, energy, worldTime,
+      hits:people.filter(person => person.hit).map(person => [person.index,person.next,person.alert])
+    };
+    try {
+      localStorage.setItem(checkpointKey,JSON.stringify(checkpoint));
+      loadButton.disabled = false;
+      saveStatus.textContent = 'Jogo salvo neste navegador.';
+    } catch {
+      saveStatus.textContent = 'O navegador não conseguiu salvar o jogo.';
+    }
+  }
+
+  function loadGame() {
+    if (state !== 'intro' && state !== 'paused') return;
+    const saved = readCheckpoint();
+    const valid = saved && typeof saved.campaign === 'string' && /^[a-z0-9]+-[a-z0-9]+$/.test(saved.campaign) &&
+      Number.isSafeInteger(saved.missionIndex) && saved.missionIndex>=0 && Number.isInteger(saved.district) && streets[saved.district] &&
+      Array.isArray(saved.targets) && saved.targets.length === missionRules(saved.missionIndex).count &&
+      new Set(saved.targets).size === saved.targets.length && saved.targets.every(index => Number.isInteger(index) && people[index]) &&
+      Array.isArray(saved.position) && saved.position.length === 3 && saved.position.every(Number.isFinite) &&
+      [saved.yaw,saved.pitch,saved.elapsed,saved.energy,saved.worldTime].every(Number.isFinite) &&
+      saved.energy>0 && saved.energy<=100 && Array.isArray(saved.hits) && saved.hits.length<saved.targets.length &&
+      saved.hits.every(hit => Array.isArray(hit) && saved.targets.includes(hit[0]) && Number.isFinite(hit[1]) && Number.isFinite(hit[2])) &&
+      new Set(saved.hits.map(hit => hit[0])).size === saved.hits.length;
+    if (!valid) {
+      saveStatus.textContent = 'Não foi possível carregar o jogo salvo.';
+      return;
+    }
+    ({campaign,missionIndex,yaw,pitch,elapsed,energy,worldTime} = saved);
+    mission = {...missionRules(missionIndex), street:streets[saved.district], targets:new Set(saved.targets)};
+    position.splice(0,3,...saved.position);
+    score = saved.hits.length;
+    nearby = null;
+    noticeUntil = 0;
+    cameraFraction = 1;
+    const hits = new Map(saved.hits.map(([index,next,alert]) => [index,{next,alert}]));
+    for (const person of people) {
+      const hit = hits.get(person.index);
+      person.target = mission.targets.has(person.index);
+      person.hit = Boolean(hit);
+      person.next = hit?.next ?? 0;
+      person.alert = hit?.alert ?? null;
+      person.px = person.x+.87*Math.sin(elapsed*.94+person.index);
+      person.pz = person.z+.88*Math.cos(elapsed*.94+person.index);
+    }
+    updateMissionHud();
+    overlay('paused');
+    saveStatus.textContent = 'Jogo carregado. Continue o voo quando quiser.';
+  }
+
+  saveButton.addEventListener('click',saveGame);
+  loadButton.addEventListener('click',loadGame);
+  showSaveControls();
+
 
   function inform(message) {
     notice = message;
@@ -425,6 +523,7 @@ function run() {
     hint.hidden = true;
     stage.classList.toggle('playing', next === 'playing');
     touchControls.hidden = !touchDevice || next !== 'playing';
+    showSaveControls();
     if (next === 'playing') return;
     if (document.pointerLockElement === canvas) document.exitPointerLock();
     if (next === 'paused') {
@@ -433,7 +532,9 @@ function run() {
       start.textContent = '▶  CONTINUAR VOO';
     } else if (next === 'cleared') {
       title.innerHTML = 'Missão<br><em>cumprida.</em>';
-      description.textContent = 'Você ganhou '+(50+10*mission.count)+' Gold. Use o saldo para personalizar o mosquito.';
+      description.textContent = lastReward
+        ? 'Você ganhou '+lastReward+' Gold. Use o saldo para personalizar o mosquito.'
+        : 'A recompensa desta missão já foi recebida.';
       start.textContent = '▶  PRÓXIMA MISSÃO';
     } else if (next === 'lost') {
       title.innerHTML = 'Fim<br><em>do voo.</em>';
@@ -444,6 +545,7 @@ function run() {
   }
 
   function play() {
+    if (touchDevice && portrait.matches) return;
     enableFlightAudio();
     if (state !== 'paused') {
       if (state === 'cleared') mission = generateMission(++missionIndex,mission.targets);
@@ -459,9 +561,7 @@ function run() {
         person.next = 0;
         person.alert = null;
       }
-      get('mission-number').textContent = String(missionIndex+1).padStart(2,'0');
-      get('mission-title').textContent = mission.title;
-      get('goal').textContent = String(mission.count).padStart(2,'0');
+      updateMissionHud();
       inform('Procure os alvos marcados no radar.');
     }
     overlay('playing');
@@ -469,6 +569,8 @@ function run() {
       try { canvas.requestPointerLock()?.catch(() => {}); } catch { /* Drag is also available. */ }
     }
   }
+
+  let lastReward = 0;
 
   function bite() {
     if (state !== 'playing') return;
@@ -483,13 +585,21 @@ function run() {
     energy = Math.min(100,energy+12);
     inform('Picada feita! Afaste-se da mão.');
     if (score === mission.count) {
-      profile.gold += 50+10*mission.count;
-      saveProfile();
+      lastReward = 0;
+      if (missionIndex>(profile.rewards[campaign] ?? -1)) {
+        lastReward = 50+10*mission.count;
+        profile.gold += lastReward;
+        profile.rewards[campaign] = missionIndex;
+        saveProfile();
+      }
       overlay('cleared');
     }
   }
 
   start.addEventListener('click', play);
+  portrait.addEventListener?.('change', event => {
+    if (touchDevice && event.matches && state === 'playing') overlay('paused');
+  });
   get('pause').addEventListener('click', () => { if (state === 'playing') overlay('paused'); });
   get('touch-bite').addEventListener('click', bite);
   window.addEventListener('keydown', event => {
@@ -575,6 +685,7 @@ function run() {
 
   function update(dt) {
     elapsed += dt;
+    worldTime = (worldTime+dt*24/180)%24;
     const ahead = +keys.has('KeyW') - +keys.has('KeyS') + stick.y;
     const side = +keys.has('KeyD') - +keys.has('KeyA') + stick.x;
     const speed = 4.5 / Math.max(1,Math.hypot(ahead,side));
@@ -773,6 +884,16 @@ function run() {
     gl.uniform3fv(uniforms.up,up);
     const lens = width/height < 1 ? 1.10 : 1.38;
     gl.uniform2f(uniforms.lens,lens*height/width,lens);
+    const daylight = Math.max(0,Math.min(1,.5+.85*Math.cos((worldTime-12)*Math.PI/12)));
+    const sky = [.07+.66*daylight,.10+.66*daylight,.20+.42*daylight];
+    gl.clearColor(...sky,1);
+    gl.uniform3fv(uniforms.sky,sky);
+    gl.uniform3f(uniforms.ambient,.28+.72*daylight,.34+.66*daylight,.52+.48*daylight);
+    const hour = Math.floor(worldTime);
+    const minute = Math.floor((worldTime-hour)*60);
+    const timeLabel = String(hour).padStart(2,'0')+':'+String(minute).padStart(2,'0');
+    const clock = get('game-clock');
+    if (clock.textContent !== timeLabel) clock.textContent = timeLabel;
     gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);
     draw(scenery,sceneryCount);
     vertices = [];

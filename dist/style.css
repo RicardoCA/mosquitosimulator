@@ -48,3 +48,19 @@ body:has(.touch-device.playing){overflow:hidden;overscroll-behavior:none}
   .touch-device.playing .joystick-thumb{width:34px;height:34px}
   .touch-device.playing .hint{bottom:calc(var(--game-bottom) + 34px);max-width:calc(100% - var(--game-left) - var(--game-right) - 200px);font-size:12px;padding:7px 10px}
 }
+#game-clock{margin-bottom:6px;color:#dce6d1;font:700 11px ui-monospace,monospace}
+#save-controls{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:9px}
+#save-controls button{min-height:38px;padding:6px 10px;background:#252e23;color:#edf2e4;border:1px solid #536349;border-radius:6px}
+#save-controls button:disabled{opacity:.55;cursor:default}
+#save-status{font-size:11px;color:var(--lime)}
+#rotate-device{display:none}
+@media (orientation:portrait){
+  .touch-device #rotate-device{position:fixed;inset:0;z-index:10;display:grid;place-items:center;padding:24px;background:#151e17f5;text-align:center}
+  #rotate-device strong{font-size:24px;color:var(--lime)}
+  #rotate-device p{max-width:260px;color:#dce6d1}
+}
+@media (orientation:landscape) and (max-height:540px){
+  .touch-device .brief:has(#save-controls:not([hidden])){top:8px;transform:none}
+  .touch-device .brief:has(#save-controls:not([hidden])) h1{font-size:clamp(2rem,9dvh,3.5rem)}
+  .touch-device .brief:has(#save-controls:not([hidden])) small{display:none}
+}

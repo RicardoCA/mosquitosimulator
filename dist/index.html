@@ -17,9 +17,14 @@
 <h1>Operação<br><em>Zumbido.</em></h1>
 <p>Dez ruas, sessenta casas e um mosquito faminto. Cada janela aberta é uma oportunidade.</p>
 <button id="start">▶ &nbsp; INICIAR VOO <span>↗</span></button>
+<div id="save-controls" hidden>
+  <button id="save-game" type="button">Salvar</button>
+  <button id="load-game" type="button">Carregar</button>
+  <span id="save-status" role="status"></span>
+</div>
 <small id="flight-controls">Olhe na direção desejada e avance</small>
 </div>
-<div class="hud"><div class="eyebrow">◆ &nbsp; MISSÃO <b id="mission-number">01</b></div><div id="mission-title" class="objective">A hora do lanche</div><div class="counter"><strong id="score">00</strong> / <b id="goal">04</b> <span>PICADAS</span></div><div class="meter-label"><span>ENERGIA</span><span id="percent">100%</span></div><div class="meter"><div id="energy"></div></div></div>
+<div class="hud"><div id="game-clock" aria-label="Horário no jogo">08:00</div><div class="eyebrow">◆ &nbsp; MISSÃO <b id="mission-number">01</b></div><div id="mission-title" class="objective">A hora do lanche</div><div class="counter"><strong id="score">00</strong> / <b id="goal">04</b> <span>PICADAS</span></div><div class="meter-label"><span>ENERGIA</span><span id="percent">100%</span></div><div class="meter"><div id="energy"></div></div></div>
 <div class="location"><i></i> <span id="location">MORRO DO COCO</span></div>
 <div class="crosshair" hidden>+</div>
 <div id="hint" class="hint" role="status" hidden></div>
@@ -33,6 +38,9 @@
     <button id="pause" type="button" aria-label="Pausar jogo">Ⅱ &nbsp; PAUSA</button>
     <button id="touch-bite" type="button">PICAR</button>
   </div>
+</div>
+<div id="rotate-device">
+  <div><strong>Vire o celular de lado</strong><p>Jogue em modo paisagem para ter espaço para pilotar.</p></div>
 </div>
 </section>
 <nav aria-label="Controles"><div><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> Voar</div><div><kbd>Mouse</kbd> Mirar o voo</div><div><kbd>E</kbd> Picar</div><div><kbd>Esc</kbd> Pausar</div></nav>
